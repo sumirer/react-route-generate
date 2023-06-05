@@ -182,8 +182,8 @@ export const router = [
       if (config.paths["@/"]) {
         pathName = `@/${pathName}`;
       }
-      if (pathName.endsWith("index")) {
-        pathName.replace(/\/index+$/, "");
+      if (pathName.endsWith("/index")) {
+        pathName =  pathName.replace(/\/index+$/, "");
       }
       const targetFileName = pathName.split("/").pop() || "";
       const importTarget = upcaseFirstKeyword(targetFileName);
