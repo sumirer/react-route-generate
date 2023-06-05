@@ -35,7 +35,7 @@ export function getConfigPath() {
 //      */
 //     match: "**/*.ts",
 //   };
-  
+
 //   export default routeConfig;
 
 export function tryCreateConfigFile() {
@@ -43,7 +43,9 @@ export function tryCreateConfigFile() {
 
   if (!fs.existsSync(configPath)) {
     // const file = fs.readFileSync(configPath);
-    fs.writeFileSync(configPath,`
+    fs.writeFileSync(
+      configPath,
+      `
 const routeConfig = {
   /**
    * scan file base path
@@ -65,11 +67,26 @@ const routeConfig = {
    * load file match regex
    */
   match: "**/*.ts",
+  /**
+   * replace alias
+   */
+  paths: {
+      '@/': '*'
+  },
+
+  /**
+   * base project url, with tsconfig
+   */
+  baseUrl: 'src',
+
+  /**
+   * project root dir, with tsconfig
+   */
+  rootDir: './' 
 };
-
-export default routeConfig;
-
-    `);
+exports.default = routeConfig;
+    `
+    );
   } else {
     console.log("The configuration file already exists..");
   }

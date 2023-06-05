@@ -101,7 +101,11 @@
     "skipLibCheck": true,                                 /* Skip type checking all .d.ts files. */
     "outDir": "dist",
     "experimentalDecorators": true,
-    "declaration": true
+    "declaration": true,
+    "baseUrl": "test",
+    "paths": {
+      "@/":["*"]
+    }
   },
   "exclude": ["test","node_modules", "dist"]
 }

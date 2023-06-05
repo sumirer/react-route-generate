@@ -60,6 +60,7 @@ function parseFileContent(files: string[]): IFileDecoratorInfo[] {
     experimentalDecorators: true,
     jsx: JsxEmit.React,
     target: ts.ScriptTarget.ES2022,
+    allowJs: true,
   });
   return files
     .map((item) => {
@@ -154,9 +155,13 @@ function getDecoratorInfo(decorator: ts.Decorator) {
   }
 }
 
-function getFileContent(info: Array<IFileDecoratorInfo>): string {
-  const basePath = process.cwd();
+function getFileContent(
+  info: Array<IFileDecoratorInfo>,
+  config: GenerateRouteConfig
+): string {
+  //   const basePath = process.cwd();
   let headerImportContent: string[] = [`import React, {lazy} from 'react';`];
+  const getProjectRootPath = path.resolve(config.rootDir, config.baseUrl);
   const fileTipMessage = `
 /**
  * this file auto generate by react-route-generate, do not modify
@@ -168,9 +173,14 @@ function getFileContent(info: Array<IFileDecoratorInfo>): string {
 export const router = [
     ${info.map((item) => {
       const isLazy = !!item.lazy;
-      const pathName = item.fileName
-        .replace(basePath + "/", "")
-        .replace(/\.[ts|tsx|jsx|js]/, "");
+      let pathName = item.fileName
+        // .replace(basePath + '/', "")
+        .replace(getProjectRootPath + "/", "")
+        .replace(/(\.ts|\.tsx|\.jsx|\.js)+$/, "");
+      // 替换常用标识符
+      if (config.paths["@/"]) {
+        pathName = `@/${pathName}`;
+      }
       const targetFileName = pathName.split("/").pop() || "";
       const importTarget = upcaseFirstKeyword(targetFileName);
       if (!isLazy) {
@@ -220,9 +230,9 @@ function createRouteFile(
   if (!fs.existsSync(targetPath)) {
     fs.mkdirSync(targetPath);
   }
-  fs.writeFileSync(targetFilePath, getFileContent(info));
-  beforeGenerate(targetFilePath)
-  console.log('route file generate success\nsee: '+ targetFilePath);
+  fs.writeFileSync(targetFilePath, getFileContent(info, config));
+  beforeGenerate(targetFilePath);
+  console.log("route file generate success\nsee: " + targetFilePath);
 }
 
 function upcaseFirstKeyword(name: string): string {
@@ -232,12 +242,11 @@ function upcaseFirstKeyword(name: string): string {
   return name[0].toUpperCase() + name.slice(1);
 }
 
-
-function beforeGenerate(targetFile: string){
-    const nodeModules = path.resolve(process.cwd(), 'node_modules')
-    if(fs.existsSync(path.resolve(nodeModules, 'eslint'))){
-        exec('eslint --fix ' + targetFile)
-    }else if(fs.existsSync(path.resolve(nodeModules, 'prettier'))){
-        exec(`prettier -c --write "${targetFile}"`)
-    }
+function beforeGenerate(targetFile: string) {
+  const nodeModules = path.resolve(process.cwd(), "node_modules");
+  if (fs.existsSync(path.resolve(nodeModules, "eslint"))) {
+    exec("eslint --fix " + targetFile);
+  } else if (fs.existsSync(path.resolve(nodeModules, "prettier"))) {
+    exec(`prettier -c --write "${targetFile}"`);
+  }
 }
