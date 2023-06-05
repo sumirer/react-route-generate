@@ -12,6 +12,7 @@ interface IFileDecoratorInfo {
   lazy?: boolean;
   routeName: string;
   cacheWithParams?: Array<string>;
+  className?: string;
 }
 
 const ROUTE_DECORATOR_NAME = "autoGenerateRoute";
@@ -80,18 +81,22 @@ function getSourceFileInfo(
   sourceFile?: ts.SourceFile
 ): Omit<IFileDecoratorInfo, "fileName"> | undefined {
   let routeGenerateDecorator: ts.Decorator | undefined;
+  let className: string | undefined;
   if (sourceFile) {
     ts.forEachChild(sourceFile, (node) => {
       switch (node.kind) {
         case ts.SyntaxKind.ClassDeclaration:
+          className = (
+            (node as ts.ClassDeclaration)?.name as ts.Identifier
+          )?.escapedText?.toString();
           const ls = (node as ts.ClassDeclaration).modifiers;
           ls?.forEach((item) => {
             if (
               ts.isDecorator(item) &&
               (
                 (item.expression as ts.CallExpression)
-                  .expression as ts.Identifier
-              ).escapedText === ROUTE_DECORATOR_NAME
+                  ?.expression as ts.Identifier
+              )?.escapedText === ROUTE_DECORATOR_NAME
             ) {
               routeGenerateDecorator = item;
             }
@@ -104,54 +109,50 @@ function getSourceFileInfo(
     });
   }
   if (routeGenerateDecorator) {
-    return getDecoratorInfo(routeGenerateDecorator) as IFileDecoratorInfo;
+    return getDecoratorInfo(
+      routeGenerateDecorator,
+      className
+    ) as IFileDecoratorInfo;
   }
 }
 
-function getDecoratorInfo(decorator: ts.Decorator) {
+function getDecoratorInfo(decorator: ts.Decorator, className?: string) {
   const expression = decorator.expression as ts.CallExpression;
   const args = expression.arguments;
   if (args.length === 1) {
     const params = (args[0] as ts.ObjectLiteralExpression)
       .properties as ts.NodeArray<ts.PropertyAssignment>;
-    const result = {};
+    const result = { className };
     params.forEach((item) => {
       const name = (item.name as ts.Identifier).escapedText || "";
       const initializer = item.initializer;
-      switch (initializer.kind) {
-        case ts.SyntaxKind.TrueKeyword:
-          Object.assign(result, { [name]: true });
-          break;
-        case ts.SyntaxKind.FalseKeyword:
-          Object.assign(result, { [name]: false });
-          break;
-        case ts.SyntaxKind.ArrayLiteralExpression:
-          Object.assign(result, {
-            [name]: (initializer as ts.ArrayLiteralExpression).elements.map(
-              (item) => {
-                switch (item.kind) {
-                  case ts.SyntaxKind.StringLiteral:
-                    return (item as ts.StringLiteral).text;
-                  case ts.SyntaxKind.TrueKeyword:
-                    return true;
-                  case ts.SyntaxKind.FalseKeyword:
-                    return false;
-                  default:
-                    return undefined;
-                }
-              }
-            ),
-          });
-        case ts.SyntaxKind.StringLiteral:
-          Object.assign(result, {
-            [name]: (initializer as ts.StringLiteral).text,
-          });
-          break;
-        default:
-          break;
+      const literalResult = getLiteralResult(initializer);
+      if (literalResult !== undefined) {
+        Object.assign(result, { [name]: literalResult });
       }
     });
     return result;
+  }
+}
+
+function getLiteralResult(
+  literal: ts.Expression
+): boolean | string | Array<any> | undefined {
+  switch (literal.kind) {
+    case ts.SyntaxKind.TrueKeyword:
+      return true;
+    case ts.SyntaxKind.FalseKeyword:
+      return false;
+    case ts.SyntaxKind.StringLiteral:
+      return (literal as ts.StringLiteral).text;
+    case ts.SyntaxKind.NumericLiteral:
+      return (literal as ts.NumericLiteral).text;
+    case ts.SyntaxKind.ArrayLiteralExpression:
+      return (literal as ts.ArrayLiteralExpression).elements.map((item) =>
+        getLiteralResult(item)
+      );
+    default:
+      return undefined;
   }
 }
 
@@ -181,16 +182,23 @@ export const router = [
       if (config.paths["@/"]) {
         pathName = `@/${pathName}`;
       }
+      if (pathName.endsWith("index")) {
+        pathName.replace(/\/index+$/, "");
+      }
       const targetFileName = pathName.split("/").pop() || "";
       const importTarget = upcaseFirstKeyword(targetFileName);
       if (!isLazy) {
-        headerImportContent.push(`import ${importTarget} from '${pathName}'`);
+        headerImportContent.push(
+          `import ${item.className || importTarget} from '${pathName}'`
+        );
       }
       return `
     {
        path: '${item.routeName}',
        component: ${
-         isLazy ? `lazy(() => import(\'${pathName}\'))` : importTarget
+         isLazy
+           ? `lazy(() => import(\'${pathName}\'))`
+           : item.className || importTarget
        },
        ${item.keepAlive === true ? "keepAlive: true," : ""}
        ${

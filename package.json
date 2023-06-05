@@ -1,6 +1,6 @@
 {
   "name": "react-route-generate",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "description": "",
   "main": "dist/libs/index.js",
   "module": "dist/libs/index.js",
