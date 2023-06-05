@@ -1,6 +1,6 @@
 # react-route-generate
 
-[中文文档]('./README_Zh.MD')
+[中文文档](./README_Zh.MD)
 
 ## Usage
 Execute the following command anywhere to globally install this tool:

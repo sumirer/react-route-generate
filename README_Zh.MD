@@ -1,6 +1,6 @@
 # react-route-generate
 
-[English]('./README.MD')
+[English](./README.MD)
 
 ## 使用
 在任意地方执行以下命令，全局安装此工具
